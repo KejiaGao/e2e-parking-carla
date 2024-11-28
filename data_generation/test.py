@@ -19,7 +19,7 @@ joystick.init()
 
 # Tkinter setup
 root = tk.Tk()
-root.title("Xbox Controller Input")
+root.title("Controller / Wheel Input")
 root.geometry("400x600")
 
 # Labels for displaying joystick states

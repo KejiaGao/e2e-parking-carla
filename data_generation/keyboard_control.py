@@ -58,8 +58,9 @@ class KeyboardControl(object):
         if pygame.joystick.get_count() == 0:
             # raise RuntimeError('No joystick detected.')
             world.hud.notification("No joystick detected.")
-        self.joystick = pygame.joystick.Joystick(0)
-        self.joystick.init()
+        else:
+            self.joystick = pygame.joystick.Joystick(0)
+            self.joystick.init()
 
     def parse_events(self, client, world, clock):
         # collision or restart task
@@ -228,104 +229,21 @@ class KeyboardControl(object):
         self._control.steer = round(self._steer_cache, 1)
         self._control.hand_brake = keys[K_s]
 
-        # Get joystick axes and buttons
-        throttle = self.joystick.get_axis(5)  # Throttle: Axis 5 (RT, Right Trigger)
-        brake = self.joystick.get_axis(2)     # Brake: Axis 2 (LT, Left Trigger)
-        steer = self.joystick.get_axis(0)     # Steering: Axis 0 (LS, Left Stick)
-        hand_brake = self.joystick.get_button(4)  # Handbrake: Button 4 (LB, Left Bumper)
+        if pygame.joystick.get_count() != 0:
+            # Get joystick axes and buttons
+            throttle = self.joystick.get_axis(5)  # Throttle: Axis 5 (RT, Right Trigger)
+            brake = self.joystick.get_axis(2)     # Brake: Axis 2 (LT, Left Trigger)
+            steer = self.joystick.get_axis(0)     # Steering: Axis 0 (LS, Left Stick)
+            hand_brake = self.joystick.get_button(4)  # Handbrake: Button 4 (LB, Left Bumper)
 
-        # Update vehicle controls based on joystick inputs
-        self._control.throttle = round(max(0, min(0.5 * (throttle + 1), 0.5)), 1)  # Ensure throttle value is within [0, 0.5]
-        self._control.brake = round(max(0, min(0.5 * (brake + 1), 1)), 1)  # Ensure brake value is within [0, 1]
-        self._control.steer = round(max(-0.7, min(steer, 0.7)), 1)  # Ensure steer value is within [-0.7, 0.7]
-        self._control.hand_brake = hand_brake
+            # Update vehicle controls based on joystick inputs
+            self._control.throttle = round(max(0, min(0.25 * (throttle + 1), 0.5)), 1)  # Ensure throttle value is within [0, 0.5]
+            self._control.brake = round(max(0, min(0.5 * (brake + 1), 1)), 1)  # Ensure brake value is within [0, 1]
+            self._control.steer = round(max(-0.7, min(steer * 0.7, 0.7)), 1)  # Ensure steer value is within [-0.7, 0.7]
+            self._control.hand_brake = hand_brake
 
 
     @staticmethod
     def _is_quit_shortcut(key):
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
     
-'''
-class XboxControllerControl(object):
-    """Class that handles Xbox controller input."""
-    
-    def __init__(self, world):
-        self._world = world
-        if isinstance(self._world.player, carla.Vehicle):
-            self._control = carla.VehicleControl()
-            self._lights = carla.VehicleLightState.NONE
-            self._world.player.set_light_state(self._lights)
-        else:
-            raise NotImplementedError("Actor type not supported")
-        self._steer_cache = 0.0
-        self._world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
-
-        # Initialize pygame joystick (for Xbox controller)
-        pygame.init()
-        if pygame.joystick.get_count() == 0:
-            raise RuntimeError('No joystick detected.')
-        self.joystick = pygame.joystick.Joystick(0)
-        self.joystick.init()
-
-    def parse_events(self, client, world, clock):
-        # collision or restart task
-        if self._world.need_init_ego_state:
-            self._control = carla.VehicleControl()
-            self._world.need_init_ego_state = False
-
-        if isinstance(self._control, carla.VehicleControl):
-            current_lights = self._lights
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return True
-            elif event.type == pygame.KEYUP:
-                if self._is_quit_shortcut(event.key):
-                    return True
-
-        # Get joystick axes and buttons
-        throttle = self.joystick.get_axis(5)  # Throttle: Axis 5
-        brake = self.joystick.get_axis(2)     # Brake: Axis 2
-        steer = self.joystick.get_axis(0)     # Steering: Axis 0
-        hand_brake = self.joystick.get_button(4)  # Handbrake: Button 4
-        gear = self.joystick.get_button(1)    # Gear: Button 1
-        restart_task = self.joystick.get_button(3)  # Restart task: Button 3
-
-        # Update vehicle controls based on joystick inputs
-        self._control.throttle = 0.5 * (throttle + 1)  # Ensure throttle is non-negative
-        self._control.brake = 0.5 * (brake + 1)  # Ensure brake is non-negative
-        self._control.steer = steer  # Steering, ensure range [-1, 1]
-
-        # Handbrake and gear controls
-        self._control.hand_brake = hand_brake
-        if gear:
-            self._control.gear = 1 if self._control.reverse else -1  # Toggle gear
-
-        if restart_task:
-            world.keyboard_restart_task = True  # Set task restart flag
-
-        # Apply control to the vehicle
-        self._control.reverse = self._control.gear < 0
-        current_lights = self._set_vehicle_lights()
-
-        world.player.apply_control(self._control)
-        if current_lights != self._lights:
-            self._lights = current_lights
-            world.player.set_light_state(carla.VehicleLightState(self._lights))
-
-    def _set_vehicle_lights(self):
-        """Set the vehicle's lights based on its control state."""
-        current_lights = self._lights
-        if self._control.brake:
-            current_lights |= carla.VehicleLightState.Brake
-        else:
-            current_lights &= ~carla.VehicleLightState.Brake
-        if self._control.reverse:
-            current_lights |= carla.VehicleLightState.Reverse
-        else:
-            current_lights &= ~carla.VehicleLightState.Reverse
-        return current_lights
-    @staticmethod
-    def _is_quit_shortcut(key):
-        return key == K_ESCAPE
-'''
