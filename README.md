@@ -23,7 +23,7 @@ CARLA simulator is utilized for training data generation and closed-loop evaluat
 Clone the repo, setup CARLA 0.9.11, and build the conda environment:
 
 ```Shell
-git clone https://github.com/qintonguav/e2e-parking-carla.git
+git clone https://github.com/EpicKJ/e2e-parking-carla.git
 cd e2e-parking-carla/
 conda env create -f environment.yml
 conda activate E2EParking
