@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import yaml
+import torch
 
 from loguru import logger
 from pytorch_lightning import Trainer, seed_everything
@@ -11,7 +12,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from dataset.dataloader import ParkingDataModule
 from tool.config import get_cfg
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6,7,8,9'
 
 
 def train():
@@ -29,6 +30,7 @@ def train():
         except yaml.YAMLError:
             logger.exception("Open {} failed!", args.config)
     cfg = get_cfg(cfg_yaml)
+    print(cfg)
 
     logger.remove()
     logger.add(cfg.log_dir + '/training_{time}.log', enqueue=True, backtrace=True, diagnose=True)
@@ -39,7 +41,7 @@ def train():
 
     parking_callbacks = setup_callbacks(cfg)
     tensor_logger = TensorBoardLogger(save_dir=cfg.log_dir, default_hp_metric=False)
-    num_gpus = 1
+    num_gpus = 10
 
     parking_trainer = Trainer(callbacks=parking_callbacks,
                               logger=tensor_logger,
@@ -52,6 +54,9 @@ def train():
                               profiler='simple')
 
     parking_model = ParkingTrainingModule(cfg)
+    if os.path.exists(cfg.pretrained_ckpt_dir):
+        pretrained_ckpt = torch.load(cfg.pretrained_ckpt_dir)
+        parking_model.load_state_dict(pretrained_ckpt['state_dict'])
     parking_datamodule = ParkingDataModule(cfg)
     parking_trainer.fit(parking_model, datamodule=parking_datamodule)
 
