@@ -5,3 +5,6 @@ todo.txt
 *.log
 carla/
 e2e_parking/
+log
+ckpt
+setup_carla.sh
