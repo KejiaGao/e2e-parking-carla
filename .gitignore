@@ -9,3 +9,7 @@ log/
 ckpt/
 config/
 test_json.py
+efficientnet-b4-6ed6700e.pth
+turbovnc_2.1.1_amd64.deb
+virtualgl_3.1_amd64.deb
+pl_train.py

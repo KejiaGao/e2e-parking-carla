@@ -16,7 +16,7 @@ def setup_callbacks(cfg):
 
     ckpt_callback = ModelCheckpoint(dirpath=cfg.checkpoint_dir,
                                     monitor='val_loss',
-                                    save_top_k=3,
+                                    save_top_k=20,
                                     mode='min',
                                     filename='E2EParking-{epoch:02d}-{val_loss:.2f}',
                                     save_last=True)
