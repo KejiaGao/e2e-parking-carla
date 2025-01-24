@@ -1,4 +1,6 @@
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
 import sys
 import argparse
 import yaml
@@ -12,10 +14,11 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from dataset.dataloader import ParkingDataModule
 from tool.config import get_cfg
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
 
 def train():
+    print("CUDA_VISIBLE_DEVICES:", os.environ.get('CUDA_VISIBLE_DEVICES'))
+    print("Device count:", torch.cuda.device_count())
+    
     arg_parser = argparse.ArgumentParser(description='ParkingModel')
     arg_parser.add_argument(
         '--config',

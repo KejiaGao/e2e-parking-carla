@@ -5,6 +5,7 @@ todo.txt
 *.log
 carla/
 e2e_parking/
-log
-ckpt
-
+log/
+ckpt/
+config/
+test_json.py

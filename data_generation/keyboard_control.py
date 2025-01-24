@@ -237,8 +237,11 @@ class KeyboardControl(object):
             hand_brake = self.joystick.get_button(4)  # Handbrake: Button 4 (LB, Left Bumper)
 
             # Update vehicle controls based on joystick inputs
-            self._control.throttle = round(max(0, min(0.25 * (throttle + 1), 0.5)), 1)  # Ensure throttle value is within [0, 0.5]
-            self._control.brake = round(max(0, min(0.5 * (brake + 1), 1)), 1)  # Ensure brake value is within [0, 1]
+            throttle = max(0, min(0.25 * (throttle + 1), 0.5)) # Ensure throttle value is within [0, 0.5]
+            brake = max(0, min(0.5 * (brake + 1), 1)) # Ensure brake value is within [0, 1]
+            
+            self._control.throttle = round(throttle / 0.05) * 0.05
+            self._control.brake = round(brake / 0.2) * 0.2
             self._control.steer = round(max(-0.7, min(steer * 0.7, 0.7)), 1)  # Ensure steer value is within [-0.7, 0.7]
             self._control.hand_brake = hand_brake
 

@@ -111,6 +111,7 @@ def main():
         help='shuffle weather between tasks (default: False)')
     argparser.add_argument(
         '--random_seed',
+        type=int,
         default=0,
         help='random seed to initialize env; if sets to 0, use current timestamp as seed (default: 0)')
     argparser.add_argument(

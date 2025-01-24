@@ -126,8 +126,8 @@ class EgoPosTown04:
 
     def update_y_scope(self, goal_y):
         self.goal_y = goal_y
-        self.y_max = self.goal_y + 8
-        self.y_min = self.goal_y - 8
+        self.y_max = self.goal_y + 8 #+ 3
+        self.y_min = self.goal_y - 8 #- 3
 
     def update_data_gen_goal_y(self, goal_y):
         self.update_y_scope(goal_y)

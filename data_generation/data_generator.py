@@ -158,8 +158,8 @@ class DataGenerator:
         self.soft_destroy()
 
         # spawn static vehicles in the parking lot
-        if self._task_index >= 16:
-            self._parking_goal_index = 17
+        if self._task_index >= 16: #16
+            self._parking_goal_index = 17 #17
         else:
             self._parking_goal_index += 2
 
