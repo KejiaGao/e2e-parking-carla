@@ -72,7 +72,10 @@ class ParkingModel(nn.Module):
     def predict(self, data):
         fuse_feature, pred_segmentation, pred_depth, bev_target = self.encoder(data)
         pred_multi_controls = data['gt_control'].cuda()
+        # print('pred_multi_controls0:', pred_multi_controls)
         for i in range(3):
             pred_control = self.control_predict.predict(fuse_feature, pred_multi_controls)
+            # print('pred_control:', pred_control)
             pred_multi_controls = torch.cat([pred_multi_controls, pred_control], dim=1)
+            # print('pred_multi_controls1:', pred_multi_controls)
         return pred_multi_controls, pred_segmentation, pred_depth, bev_target

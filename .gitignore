@@ -13,3 +13,7 @@ efficientnet-b4-6ed6700e.pth
 turbovnc_2.1.1_amd64.deb
 virtualgl_3.1_amd64.deb
 pl_train.py
+combined_image/
+data/
+eva_result/
+dataset/carla_dataset copy.py

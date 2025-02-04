@@ -57,17 +57,19 @@ class BevModel(nn.Module):
         return points
 
     def encoder_forward(self, images):
+        # print("images.shape:", images.shape) # [5, 5, 3, 512, 512] vs [5, 4, 3, 256, 256] vs [5, 4, 15, 256, 256]
         b, n, c, h, w = images.shape
         images = images.view(b * n, c, h, w)
         x, depth = self.cam_encoder(images)
-
+        # print(x.size(), depth.size()) # [100, 64, 32, 32], [100, 48, 32, 32] vs [20, 64, 32, 32] vs [20, 48, 32, 32]
         depth_prob = depth.softmax(dim=1)
         if self.cfg.use_depth_distribution:
             x = depth_prob.unsqueeze(1) * x.unsqueeze(2)
         else:
             x = x.unsqueeze(2).repeat(1, 1, self.depth_channel, 1, 1)
-
-        x = x.view(b, n, *x.shape[1:])
+        # print(x.size()) # [100, 64, 48, 32, 32] vs [20, 64, 48, 32, 32]
+        x = x.view(b, n, *x.shape[1:]) # [5, 5, 64, 48, 32, 32], error: 100 -> 5*5 vs [5, 4, 64, 48, 32, 32]
+        # print(x.size())
         x = x.permute(0, 1, 3, 4, 5, 2)
         return x, depth_prob
 
