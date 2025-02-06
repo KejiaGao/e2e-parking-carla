@@ -14,7 +14,7 @@ class CamEncoder(nn.Module):
         self.downsample = cfg.bev_down_sample
         self.version = cfg.backbone.split('-')[1]
         
-        self.backbone = EfficientNet.from_pretrained(model_name=cfg.backbone, in_channels=15)
+        self.backbone = EfficientNet.from_pretrained(model_name=cfg.backbone, in_channels=9)
         self.delete_unused_layers()
         if self.version == 'b4':
             self.reduction_channel = [0, 24, 32, 56, 160, 448]
@@ -62,7 +62,7 @@ class CamEncoder(nn.Module):
         endpoints = dict()
 
         # Stem
-        x = x.view(-1, 15, 256, 256)
+        # x = x.view(-1, 9, 256, 256)
         x = self.backbone._swish(self.backbone._bn0(self.backbone._conv_stem(x)))
         prev_x = x
 

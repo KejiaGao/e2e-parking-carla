@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from PIL import Image
 from PIL import ImageDraw
-from collections import OrderedDict
+from collections import OrderedDict, deque
 
 from tool.geometry import update_intrinsics
 from tool.config import Configuration, get_cfg
@@ -241,6 +241,8 @@ class ParkingAgent:
         self.boost = False
         self.boot_step = 0
 
+        self.frame_buffer = deque(maxlen=11)
+
         self.init_agent()
 
         plt.ion()
@@ -372,11 +374,17 @@ class ParkingAgent:
 
             if not data_frame:
                 return
+            self.frame_buffer.append(data_frame)
 
             vehicle_transform = data_frame['veh_transfrom']
             imu_data = data_frame['imu']
 
-            data = self.get_model_data(data_frame)
+            if len(self.frame_buffer) < 11:
+                return
+
+            frame_indices = [-1, -6, -11] # , -16, -21
+            frames_to_use = [self.frame_buffer[i] for i in frame_indices]
+            data = self.get_model_data(frames_to_use)
 
             self.model.eval()
             with torch.no_grad():
@@ -445,32 +453,43 @@ class ParkingAgent:
             self.boot_step = 0
             self.boost = False
 
-    def get_model_data(self, data_frame):
-
-        vehicle_transform = data_frame['veh_transfrom']
-        imu_data = data_frame['imu']
-        vehicle_velocity = data_frame['veh_velocity']
+    def get_model_data(self, data_frames):
+        image_list = []
+        # ego_motion_list = []
+        imu_data = data_frames[0]['imu']
+        vehicle_velocity = data_frames[0]['veh_velocity']
+        vehicle_transform = data_frames[0]['veh_transfrom'] 
 
         data = {}
 
-        target_point = convert_slot_coord(vehicle_transform, self.net_eva.eva_parking_goal)
+        for data_frame in data_frames:
+            # imu_data = data_frame['imu']
+            # vehicle_velocity = data_frame['veh_velocity']
+            
+            front, _ = self.image_process(data_frame['rgb_front'])
+            left, _ = self.image_process(data_frame['rgb_left'])
+            right, _ = self.image_process(data_frame['rgb_right'])
+            rear, _ = self.image_process(data_frame['rgb_rear'])
 
-        front_final, self.rgb_front = self.image_process(data_frame['rgb_front'])
-        left_final, self.rgb_left = self.image_process(data_frame['rgb_left'])
-        right_final, self.rgb_right = self.image_process(data_frame['rgb_right'])
-        rear_final, self.rgb_rear = self.image_process(data_frame['rgb_rear'])
+            images = torch.cat([front, left, right, rear], dim=0)
+            image_list.append(images)
 
-        images = [front_final, left_final, right_final, rear_final]
-        images = torch.cat(images, dim=0)
-        data['image'] = images.unsqueeze(0)
-
-        data['extrinsics'] = self.extrinsic.unsqueeze(0)
-        data['intrinsics'] = self.intrinsic_crop.unsqueeze(0)
-
+            # velocity = (3.6 * math.sqrt(vehicle_velocity.x ** 2 + vehicle_velocity.y ** 2 + vehicle_velocity.z ** 2))
+            # ego_motion = torch.tensor([velocity, imu_data.accelerometer.x, imu_data.accelerometer.y],
+            #                         dtype=torch.float).unsqueeze(0)
+            # ego_motion_list.append(ego_motion)
+        
+        data['image'] = torch.cat(image_list, dim=1).unsqueeze(0) # [1, 4, 3*3, 256, 256]
+        # print(data['image'].size())
+        # data['ego_motion'] = torch.cat(ego_motion_list, dim=0) # [5, 3]
         velocity = (3.6 * math.sqrt(vehicle_velocity.x ** 2 + vehicle_velocity.y ** 2 + vehicle_velocity.z ** 2))
         data['ego_motion'] = torch.tensor([velocity, imu_data.accelerometer.x, imu_data.accelerometer.y],
                                           dtype=torch.float).unsqueeze(0).unsqueeze(0)
-
+        # print(data['ego_motion'].size())
+        data['extrinsics'] = self.extrinsic.unsqueeze(0)
+        data['intrinsics'] = self.intrinsic_crop.unsqueeze(0)
+        
+        target_point = convert_slot_coord(vehicle_transform, self.net_eva.eva_parking_goal)                   
         if self.pre_target_point is not None:
             target_point = [self.pre_target_point[0], self.pre_target_point[1], target_point[2]]
         data['target_point'] = torch.tensor(target_point, dtype=torch.float).unsqueeze(0)
@@ -478,7 +497,7 @@ class ParkingAgent:
         data['gt_control'] = torch.tensor([self.BOS_token], dtype=torch.int64).unsqueeze(0)
 
         if self.show_eva_imgs:
-            img = encode_npy_to_pil(np.asarray(data_frame['topdown'].squeeze().cpu()))
+            img = encode_npy_to_pil(np.asarray(data_frames[0]['topdown'].squeeze().cpu()))
             img = np.moveaxis(img, 0, 2)
             img = Image.fromarray(img)
             seg_gt = self.semantic_process(image=img, scale=0.5, crop=200, target_slot=target_point)
@@ -487,6 +506,47 @@ class ParkingAgent:
             data['segmentation'] = Image.fromarray(seg_gt)
 
         return data
+
+        # vehicle_transform = data_frame['veh_transfrom']
+        # imu_data = data_frame['imu']
+        # vehicle_velocity = data_frame['veh_velocity']
+
+        # data = {}
+
+        # target_point = convert_slot_coord(vehicle_transform, self.net_eva.eva_parking_goal)
+
+        # front_final, self.rgb_front = self.image_process(data_frame['rgb_front'])
+        # left_final, self.rgb_left = self.image_process(data_frame['rgb_left'])
+        # right_final, self.rgb_right = self.image_process(data_frame['rgb_right'])
+        # rear_final, self.rgb_rear = self.image_process(data_frame['rgb_rear'])
+
+        # images = [front_final, left_final, right_final, rear_final]
+        # images = torch.cat(images, dim=0)
+        # data['image'] = images.unsqueeze(0)
+
+        # data['extrinsics'] = self.extrinsic.unsqueeze(0)
+        # data['intrinsics'] = self.intrinsic_crop.unsqueeze(0)
+
+        # velocity = (3.6 * math.sqrt(vehicle_velocity.x ** 2 + vehicle_velocity.y ** 2 + vehicle_velocity.z ** 2))
+        # data['ego_motion'] = torch.tensor([velocity, imu_data.accelerometer.x, imu_data.accelerometer.y],
+        #                                   dtype=torch.float).unsqueeze(0).unsqueeze(0)
+
+        # if self.pre_target_point is not None:
+        #     target_point = [self.pre_target_point[0], self.pre_target_point[1], target_point[2]]
+        # data['target_point'] = torch.tensor(target_point, dtype=torch.float).unsqueeze(0)
+
+        # data['gt_control'] = torch.tensor([self.BOS_token], dtype=torch.int64).unsqueeze(0)
+
+        # if self.show_eva_imgs:
+        #     img = encode_npy_to_pil(np.asarray(data_frame['topdown'].squeeze().cpu()))
+        #     img = np.moveaxis(img, 0, 2)
+        #     img = Image.fromarray(img)
+        #     seg_gt = self.semantic_process(image=img, scale=0.5, crop=200, target_slot=target_point)
+        #     seg_gt[seg_gt == 1] = 128
+        #     seg_gt[seg_gt == 2] = 255
+        #     data['segmentation'] = Image.fromarray(seg_gt)
+
+        # return data
 
     def draw_waypoints(self, waypoints):
         ego_t = self.world.player.get_transform()

@@ -40,7 +40,7 @@ class FeatureFusion(nn.Module):
     def forward(self, bev_feature, ego_motion):
         bev_feature = bev_feature.transpose(1, 2)
 
-        motion_feature = self.motion_encoder(ego_motion.view(-1, 1, 15)).transpose(1, 2).expand(-1, -1, 2)
+        motion_feature = self.motion_encoder(ego_motion).transpose(1, 2).expand(-1, -1, 2)
         fuse_feature = torch.cat([bev_feature, motion_feature], dim=2)
 
         fuse_feature = self.pos_drop(fuse_feature + self.pos_embed)
