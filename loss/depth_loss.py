@@ -15,7 +15,7 @@ class DepthLoss(nn.Module):
         self.down_sample_factor = self.cfg.bev_down_sample
         self.depth_channels = int((self.cfg.d_bound[1] - self.cfg.d_bound[0]) / self.cfg.d_bound[2])
 
-    def forward(self, depth_preds, depth_labels):
+    '''def forward(self, depth_preds, depth_labels): # original
         depth_labels = self.get_down_sampled_gt_depth(depth_labels)
         depth_preds = depth_preds.permute(0, 2, 3, 1).contiguous().view(-1, self.depth_channels)
         fg_mask = torch.max(depth_labels, dim=1).values > 0.0
@@ -27,7 +27,37 @@ class DepthLoss(nn.Module):
                 reduction='none',
             ).sum() / max(1.0, fg_mask.sum()))
 
+        return depth_loss'''
+    def forward(self, depth_preds, depth_labels):
+        # Get downsampled ground truth depth labels
+        depth_labels = self.get_down_sampled_gt_depth(depth_labels)
+        
+        # Reshape depth_preds to [B, T, N, D, H', W']
+        B = self.cfg.batch_size
+        T = 3
+        N = 4
+        D, H_prime, W_prime = depth_preds.shape[1:]  # D = depth_channels, H' = height, W' = width
+        depth_preds = depth_preds.view(B, T, N, D, H_prime, W_prime)  # [B, T, N, D, H', W']
+        
+        # Select only the current frame (assuming the current frame is the first time step)
+        depth_preds = depth_preds[:, 0]  # Shape becomes [B, N, D, H_prime, W_prime]
+        
+        # Flatten depth_preds to calculate binary cross-entropy
+        depth_preds = depth_preds.permute(0, 2, 3, 4, 1).contiguous().view(-1, self.depth_channels)
+        
+        # Generate foreground mask
+        fg_mask = torch.max(depth_labels, dim=1).values > 0.0
+        
+        # Calculate depth loss using binary cross-entropy
+        with autocast(enabled=False):
+            depth_loss = (F.binary_cross_entropy(
+                depth_preds[fg_mask],
+                depth_labels[fg_mask],
+                reduction='none',
+            ).sum() / max(1.0, fg_mask.sum()))
+
         return depth_loss
+
 
     def get_down_sampled_gt_depth(self, gt_depths):
         B, N, H, W = gt_depths.shape

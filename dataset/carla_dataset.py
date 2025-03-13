@@ -4,7 +4,6 @@ import carla
 import torch.utils.data
 import numpy as np
 import torchvision.transforms
-
 from PIL import Image
 from loguru import logger
 
@@ -376,7 +375,7 @@ class CarlaDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.front) - 10
-
+    
     def __getitem__(self, index): # channel concat
         current_index = index + 10
         
@@ -392,7 +391,7 @@ class CarlaDataset(torch.utils.data.Dataset):
         # num_frames = len(frame_indices)
         # frame_indices = [idx for idx in frame_indices if idx >= 0]  # Prevent out-of-bounds access
         
-        frame_indices = [current_index, current_index - 5, current_index - 10]
+        frame_indices = [current_index, current_index - 5, current_index - 10] #, current_index - 15, current_index - 20]
 
         # while len(frame_indices) < num_frames:
         #     frame_indices.append(frame_indices[-1])  # Repeat the oldest available frame 
@@ -420,15 +419,13 @@ class CarlaDataset(torch.utils.data.Dataset):
             #                                     target_slot=self.target_point[idx])
             # segmentation_list.append(torch.from_numpy(segmentation).long().unsqueeze(0))  # [1, 200, 200]
 
-
             # Ego Motion Processing
             # ego_motion = np.column_stack((self.velocity[idx], self.acc_x[idx], self.acc_y[idx]))
             # ego_motion_list.append(torch.from_numpy(ego_motion))  # [1, 3]
 
-
         # Convert lists to tensors
         # print(image_list[0].size())
-        data['image'] = torch.cat(image_list, dim=1) # [4, 3*3, 256, 256]
+        data['image'] = torch.stack(image_list, dim=0) # [4, 3*3, 256, 256]
         # print(data['image'].size())
         # data['depth'] = torch.stack(depth_list, dim=1) # [4, 5, 256, 256]
         # print(data['depth'].size())
@@ -440,8 +437,6 @@ class CarlaDataset(torch.utils.data.Dataset):
         data['ego_motion'] = torch.from_numpy(ego_motion) # only current step
         # print("data['ego_motion'].size()", data['ego_motion'].size())
         
-        data['target_point'] = torch.from_numpy(self.target_point[current_index]) # [3]
-        
         depths = [get_depth(self.front_depth[current_index], self.image_crop),
                   get_depth(self.left_depth[current_index], self.image_crop),
                   get_depth(self.right_depth[current_index], self.image_crop),
@@ -452,7 +447,9 @@ class CarlaDataset(torch.utils.data.Dataset):
                                                 target_slot=self.target_point[current_index])
         data['segmentation'] = torch.from_numpy(segmentation).long().unsqueeze(0) # [1, 200, 200]
         # print("data['segmentation'].size():", data['segmentation'].size())
+
         # target_point
+        data['target_point'] = torch.from_numpy(self.target_point[current_index]) # [3]
 
         # extrinsic and intrinsic matrix
         data['extrinsics'] = self.extrinsic # [4, 4, 4]
@@ -471,154 +468,51 @@ class CarlaDataset(torch.utils.data.Dataset):
         # print(data['gt_acc'].size(), data['gt_steer'].size(), data['gt_reverse'].size())
         return data
 
-    def __getitem__(self, index): # 2*2 concat
-        current_index = index + 10
-        
+    '''def __getitem__(self, index): # original
         data = {}
-
         keys = ['image', 'depth', 'extrinsics', 'intrinsics', 'target_point', 'ego_motion', 'segmentation',
                 'gt_control', 'gt_acc', 'gt_steer', 'gt_reverse']
-
         for key in keys:
             data[key] = []
 
-        frame_indices = [current_index, current_index - 5, current_index - 10]
-        image_list = []
+        # image & extrinsics & intrinsics
+        images = [self.image_process(self.front[index])[0], self.image_process(self.left[index])[0],
+                  self.image_process(self.right[index])[0], self.image_process(self.rear[index])[0]]
+        images = torch.cat(images, dim=0)
+        data['image'] = images
 
+        data['extrinsics'] = self.extrinsic
+        data['intrinsics'] = self.intrinsic
 
-        # data['ego_motion'] = torch.cat(ego_motion_list, dim=0) # [5, 3]
-        ego_motion = np.column_stack((self.velocity[current_index], self.acc_x[current_index], self.acc_y[current_index]))
-        data['ego_motion'] = torch.from_numpy(ego_motion) # only current step
-        # print("data['ego_motion'].size()", data['ego_motion'].size())
-        
-        data['target_point'] = torch.from_numpy(self.target_point[current_index]) # [3]
-        
-        depths = [get_depth(self.front_depth[current_index], self.image_crop),
-                  get_depth(self.left_depth[current_index], self.image_crop),
-                  get_depth(self.right_depth[current_index], self.image_crop),
-                  get_depth(self.rear_depth[current_index], self.image_crop)]
+        # depth
+        depths = [get_depth(self.front_depth[index], self.image_crop),
+                  get_depth(self.left_depth[index], self.image_crop),
+                  get_depth(self.right_depth[index], self.image_crop),
+                  get_depth(self.rear_depth[index], self.image_crop)]
         depths = torch.cat(depths, dim=0)
         data['depth'] = depths
-        segmentation = self.semantic_process(self.topdown[current_index], scale=0.5, crop=200,
-                                                target_slot=self.target_point[current_index])
-        data['segmentation'] = torch.from_numpy(segmentation).long().unsqueeze(0) # [1, 200, 200]
-        # print("data['segmentation'].size():", data['segmentation'].size())
-        # target_point
 
-        # extrinsic and intrinsic matrix
-        data['extrinsics'] = self.extrinsic # [4, 4, 4]
-        data['intrinsics'] = self.intrinsic # [4, 3, 3]
-        
+        # segmentation
+        segmentation = self.semantic_process(self.topdown[index], scale=0.5, crop=200,
+                                             target_slot=self.target_point[index])
+        data['segmentation'] = torch.from_numpy(segmentation).long().unsqueeze(0)
+
+        # target_point
+        data['target_point'] = torch.from_numpy(self.target_point[index])
+
+        # ego_motion
+        ego_motion = np.column_stack((self.velocity[index], self.acc_x[index], self.acc_y[index]))
+        data['ego_motion'] = torch.from_numpy(ego_motion)
+
         # gt control token
-        data['gt_control'] = torch.from_numpy(self.control[current_index]) # [15]
+        data['gt_control'] = torch.from_numpy(self.control[index])
 
         # gt control raw
-        data['gt_acc'] = torch.from_numpy(self.throttle_brake[current_index]) # [4]
-        data['gt_steer'] = torch.from_numpy(self.steer[current_index]) # [4]
-        data['gt_reverse'] = torch.from_numpy(self.reverse[current_index]) # [4]
+        data['gt_acc'] = torch.from_numpy(self.throttle_brake[index])
+        data['gt_steer'] = torch.from_numpy(self.steer[index])
+        data['gt_reverse'] = torch.from_numpy(self.reverse[index])
 
-        # for idx in frame_indices:
-        #     # Image Processing
-        #     # print("image size:", self.image_process(self.left[idx])[0].size())
-        #     top_row = torch.cat((self.image_process(self.left[idx])[0], self.image_process(self.front[idx])[0]), dim=3)    # Left | Front
-        #     bottom_row = torch.cat((self.image_process(self.rear[idx])[0], self.image_process(self.right[idx])[0]), dim=3) # Rear | Right
-        #     combined_image = torch.cat((top_row, bottom_row), dim=2)  # Stack top and bottom rows vertically
-        #     image_list.append(combined_image)
-
-        #     # Depth Processing
-        #     front_depth = get_depth(self.front_depth[idx], self.image_crop)
-        #     left_depth = get_depth(self.left_depth[idx], self.image_crop)
-        #     right_depth = get_depth(self.right_depth[idx], self.image_crop)
-        #     rear_depth = get_depth(self.rear_depth[idx], self.image_crop)
-        #     # print(rear_depth.size())
-
-        #     top_row = torch.cat((left_depth, front_depth), dim=2)    # Left | Front
-        #     bottom_row = torch.cat((rear_depth, right_depth), dim=2) # Rear | Right
-        #     combined_depth = torch.cat((top_row, bottom_row), dim=1)  # Stack vertically
-        #     depth_list.append(combined_depth)
-
-        #     # Segmentation Processing
-        #     segmentation = self.semantic_process(self.topdown[idx], scale=0.5, crop=200,
-        #                                         target_slot=self.target_point[idx])
-        #     segmentation_list.append(torch.from_numpy(segmentation).long().unsqueeze(0))
-
-        #     # Ego Motion Processing
-        #     ego_motion = np.column_stack((self.velocity[idx], self.acc_x[idx], self.acc_y[idx]))
-        #     ego_motion_list.append(torch.from_numpy(ego_motion))
-
-        # Convert lists to tensors
-        # print(image_list[0].size())
-        # data['image'] = torch.cat(image_list, dim=0) # [5, 3, 512, 512]
-        # # print(data['image'].size())
-        # data['depth'] = torch.cat(depth_list, dim=0) # [5, 512, 512]
-        # data['segmentation'] = torch.cat(segmentation_list, dim=0) # torch.Size([5, 200, 200])
-        # data['ego_motion'] = torch.cat(ego_motion_list, dim=0) # torch.Size([5, 3])
-
-        # # target_point
-        # data['target_point'] = torch.from_numpy(self.target_point[index]) # [3]
-
-        # # extrinsic and intrinsic matrix
-        # data['extrinsics'] = self.extrinsic # [4, 4, 4]
-        # data['intrinsics'] = self.intrinsic # [4, 3, 3]
-        
-        # # gt control token
-        # data['gt_control'] = torch.from_numpy(self.control[index]) # [15]
-
-        # # gt control raw
-        # data['gt_acc'] = torch.from_numpy(self.throttle_brake[index]) # [4]
-        # data['gt_steer'] = torch.from_numpy(self.steer[index]) # [4]
-        # data['gt_reverse'] = torch.from_numpy(self.reverse[index]) # [4]
-
-        # print(data['image'].size(), data['depth'].size(), data['segmentation'].size(), data['ego_motion'].size())
-        # print(data['target_point'].size(), data['extrinsics'].size(), data['intrinsics'].size(), data['gt_control'].size())
-        # print(data['gt_acc'].size(), data['gt_steer'].size(), data['gt_reverse'].size())
-        return data
-
-    # def __getitem__(self, index): # original
-    #     data = {}
-    #     keys = ['image', 'depth', 'extrinsics', 'intrinsics', 'target_point', 'ego_motion', 'segmentation',
-    #             'gt_control', 'gt_acc', 'gt_steer', 'gt_reverse']
-    #     for key in keys:
-    #         data[key] = []
-
-    #     # image & extrinsics & intrinsics
-    #     images = [self.image_process(self.front[index])[0], self.image_process(self.left[index])[0],
-    #               self.image_process(self.right[index])[0], self.image_process(self.rear[index])[0]]
-    #     images = torch.cat(images, dim=0)
-    #     data['image'] = images
-
-    #     data['extrinsics'] = self.extrinsic
-    #     data['intrinsics'] = self.intrinsic
-
-    #     # depth
-    #     depths = [get_depth(self.front_depth[index], self.image_crop),
-    #               get_depth(self.left_depth[index], self.image_crop),
-    #               get_depth(self.right_depth[index], self.image_crop),
-    #               get_depth(self.rear_depth[index], self.image_crop)]
-    #     depths = torch.cat(depths, dim=0)
-    #     data['depth'] = depths
-
-    #     # segmentation
-    #     segmentation = self.semantic_process(self.topdown[index], scale=0.5, crop=200,
-    #                                          target_slot=self.target_point[index])
-    #     data['segmentation'] = torch.from_numpy(segmentation).long().unsqueeze(0)
-
-    #     # target_point
-    #     data['target_point'] = torch.from_numpy(self.target_point[index])
-
-    #     # ego_motion
-    #     ego_motion = np.column_stack((self.velocity[index], self.acc_x[index], self.acc_y[index]))
-    #     data['ego_motion'] = torch.from_numpy(ego_motion)
-
-    #     # gt control token
-    #     data['gt_control'] = torch.from_numpy(self.control[index])
-
-    #     # gt control raw
-    #     data['gt_acc'] = torch.from_numpy(self.throttle_brake[index])
-    #     data['gt_steer'] = torch.from_numpy(self.steer[index])
-    #     data['gt_reverse'] = torch.from_numpy(self.reverse[index])
-
-    #     return data
+        return data'''
 
 class ProcessSemantic:
     def __init__(self, cfg):

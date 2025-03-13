@@ -47,10 +47,13 @@ class ParkingModel(nn.Module):
 
     def encoder(self, data):
         images = data['image'].to(self.cfg.device, non_blocking=True)
+        # print("images:", images.size())
         intrinsics = data['intrinsics'].to(self.cfg.device, non_blocking=True)
         extrinsics = data['extrinsics'].to(self.cfg.device, non_blocking=True)
         target_point = data['target_point'].to(self.cfg.device, non_blocking=True)
+        # print("target_point:", target_point.size())
         ego_motion = data['ego_motion'].to(self.cfg.device, non_blocking=True)
+        # print("ego_motion:", ego_motion.size())
 
         bev_feature, pred_depth = self.bev_model(images, intrinsics, extrinsics)
 
@@ -66,13 +69,16 @@ class ParkingModel(nn.Module):
 
     def forward(self, data):
         fuse_feature, pred_segmentation, pred_depth, _ = self.encoder(data)
+        # print("fuse_feature:", fuse_feature.size())
+        # print("pred_segmentation:", pred_segmentation.size())
+        # print("pred_depth:", pred_depth.size())
         pred_control = self.control_predict(fuse_feature, data['gt_control'].cuda())
+        # print("pred_control:", pred_control.size())
         return pred_control, pred_segmentation, pred_depth
 
     def predict(self, data):
         fuse_feature, pred_segmentation, pred_depth, bev_target = self.encoder(data)
         pred_multi_controls = data['gt_control'].cuda()
-        # print('pred_multi_controls0:', pred_multi_controls)
         for i in range(3):
             pred_control = self.control_predict.predict(fuse_feature, pred_multi_controls)
             # print('pred_control:', pred_control)

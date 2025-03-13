@@ -126,8 +126,15 @@ class EgoPosTown04:
 
     def update_y_scope(self, goal_y):
         self.goal_y = goal_y
-        self.y_max = self.goal_y + 8 #+ 3
-        self.y_min = self.goal_y - 8 #- 3
+        y_up = 8 # evaluation: 8
+        y_down = -8 # evaluation : -8
+        self.y_max = self.goal_y + y_up
+        if self.goal_y > -236 and self.goal_y < -235: # 2-1 and 3-1 in evaluation
+            self.y_min = town04_bound["y_min"] # To prevent outbound of initialization
+        elif self.goal_y > -233 and self.goal_y < -232 and y_down < -6: # 2-2 and 3-2 in data generation
+            self.y_min = town04_bound["y_min"] # To cover wider range of initialization  
+        else:
+            self.y_min = self.goal_y + y_down         
 
     def update_data_gen_goal_y(self, goal_y):
         self.update_y_scope(goal_y)
