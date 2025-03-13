@@ -10,6 +10,5 @@ ckpt/
 config/
 test_json.py
 efficientnet-b4-6ed6700e.pth
-pl_train.py
 eva_result/
 dataset/carla_dataset copy.py
