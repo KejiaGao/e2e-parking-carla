@@ -7,7 +7,6 @@ carla/
 e2e_parking/
 log/
 ckpt/
-config/
 test_json.py
 efficientnet-b4-6ed6700e.pth
 eva_result/
