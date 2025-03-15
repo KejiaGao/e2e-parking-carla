@@ -10,7 +10,7 @@ parking_model:
   epochs: 155
   learning_rate: 0.000075
   weight_decay: 0.0001
-  batch_size: 16
+  batch_size: 8
 
   training_map: "Gen5B_train"
   validation_map: "Gen5B_val"
