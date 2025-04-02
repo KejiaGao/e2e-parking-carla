@@ -437,7 +437,9 @@ class ParkingAgent:
 
         # if brake and throttle both not on, and speed < 2 for more than 2 seconds, give it a small throttle for 1
         # second
-        if self.trans_control.throttle < 1e-5 and self.trans_control.brake < 1e-5 and speed < 2.0:
+        if not self.trans_control.reverse and self.trans_control.throttle < 1e-5 and self.trans_control.brake < 1e-5 and speed < 2.0:
+            self.stop_count += 1
+        elif self.trans_control.reverse and self.trans_control.throttle < 0.11 and self.trans_control.brake < 1e-5 and speed < 2.0: # 0.11
             self.stop_count += 1
         else:
             self.stop_count = 0.0
@@ -479,7 +481,7 @@ class ParkingAgent:
             #                         dtype=torch.float).unsqueeze(0)
             # ego_motion_list.append(ego_motion)
         
-        data['image'] = torch.cat(image_list, dim=1).unsqueeze(0) # [1, 4, 3*3, 256, 256]
+        data['image'] = torch.stack(image_list, dim=0).unsqueeze(0) # [1, 4, 3*3, 256, 256]
         # print(data['image'].size())
         # data['ego_motion'] = torch.cat(ego_motion_list, dim=0) # [5, 3]
         velocity = (3.6 * math.sqrt(vehicle_velocity.x ** 2 + vehicle_velocity.y ** 2 + vehicle_velocity.z ** 2))

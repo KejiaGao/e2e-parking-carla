@@ -5,7 +5,7 @@ import pygame
 
 from data_generation.network_evaluator import NetworkEvaluator
 from data_generation.multi_control import MultiControl
-from agent.parking_agent import ParkingAgent, show_control_info
+from agent.parking_agent_mf import ParkingAgent, show_control_info
 
 
 def game_loop(args):
@@ -137,7 +137,7 @@ def main():
         help='random seed to initialize env; if sets to 0, use current timestamp as seed (default: 0)')
     argparser.add_argument(
         '--bev_render_device',
-        default='cpu',
+        default='cuda',
         help='device used for BEV Rendering (default: cpu)',
         choices=['cpu', 'cuda'])
     argparser.add_argument(

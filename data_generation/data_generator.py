@@ -95,7 +95,6 @@ class DataGenerator:
         self._world.soft_destroy()
 
     def tick(self, clock):
-
         self._world.distance_diff_to_goal = self._distance_diff_to_goal
         self._world.rotation_diff_to_goal = self._rotation_diff_to_goal
 

@@ -3,14 +3,14 @@ parking_model:
   data_dir: './e2e_parking/'
   log_dir: './log/'
   checkpoint_dir: './ckpt'
-  pretrained_ckpt_dir: './ckpt/pretrained.ckpt' # ./ckpt/pretrained0.ckpt
+  pretrained_ckpt_dir: './ckpt/exp_2025_3_17_7_27_22/last.ckpt' # ./ckpt/pretrained0.ckpt
   log_every_n_steps: 10
   check_val_every_n_epoch: 5
 
   epochs: 155
   learning_rate: 0.000075
   weight_decay: 0.0001
-  batch_size: 16
+  batch_size: 5
 
   training_map: "Gen5B_train"
   validation_map: "Gen5B_val"

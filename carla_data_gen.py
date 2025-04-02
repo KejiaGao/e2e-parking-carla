@@ -19,6 +19,13 @@ def game_loop(args):
         carla_world = client.load_world(args.map)
         carla_world.unload_map_layer(carla.MapLayer.ParkedVehicles)
 
+        # world_settings = carla_world.get_settings()
+        # if world_settings.synchronous_mode:
+        #     fps = 1.0 / world_settings.fixed_delta_seconds
+        #     print(f"CARLA is running at {fps:.2f} FPS")
+        # else:
+        #     print("CARLA is in asynchronous mode; FPS is variable.")
+
         data_generator = DataGenerator(carla_world, args)
         controller = MultiControl(data_generator.world)
 
@@ -37,6 +44,10 @@ def game_loop(args):
         clock = pygame.time.Clock()
         while True:
             data_generator.world_tick()
+            world = client.get_world()
+            timestamp = world.get_snapshot().timestamp
+            carla_fps = 1.0 / timestamp.delta_seconds
+            print(f"CARLA Internal FPS: {carla_fps:.2f}")
             clock.tick_busy_loop(60)
             if controller.parse_events(client, data_generator.world, clock):
                 return
@@ -124,8 +135,8 @@ def main():
         help='random seed to initialize env; if sets to 0, use current timestamp as seed (default: 0)')
     argparser.add_argument(
         '--bev_render_device',
-        default='cpu',
-        help='device used for BEV Rendering (default: cpu)',
+        default='cuda',
+        help='device used for BEV Rendering (default: cuda)',
         choices=['cpu', 'cuda'])
     args = argparser.parse_args()
 
