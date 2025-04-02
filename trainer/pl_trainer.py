@@ -18,7 +18,7 @@ def setup_callbacks(cfg):
                                     monitor='val_loss',
                                     save_top_k=10,
                                     mode='min',
-                                    filename='E2EParking-{epoch:02d}-{val_loss:.2f}',
+                                    filename='E2EParking-{epoch:02d}-{val_loss:.4f}',
                                     save_last=True)
     callbacks.append(ckpt_callback)
 
