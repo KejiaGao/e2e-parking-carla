@@ -546,8 +546,8 @@ class NetworkEvaluator:
 
     @property
     def inference_time(self):
-        if len(self._inference_time) > 0:
-            print("_inference_time:", self._inference_time[-1])
+        # if len(self._inference_time) > 0:
+        #     print("_inference_time:", self._inference_time[-1])
         return self._inference_time
 
     @property

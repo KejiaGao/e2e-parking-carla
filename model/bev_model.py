@@ -70,7 +70,7 @@ class BevModel(nn.Module):
         The function returns fused features with shape [B, N, D, H', W', C] (same as the single-frame output)
         and the depth probability (depth_prob).
         """
-        # print("images.shape:", images.shape) # 4-view concat[5, 5, 3, 512, 768] vs original[5, 4, 3, 256, 256] vs channel concat[5, 5, 4, 3, 256, 256]
+        # print("images.shape:", images.shape) # original[5, 4, 3, 256, 256] vs channel concat[5, 3, 4, 3, 256, 256]
         B, T, N, C, H, W = images.shape
 
         # Merge the time and camera dimensions to process all images with the CamEncoder
